@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#10131A">
+<title>GATE CSE PYQ Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body class="grid-bg">
+
+<div class="mobile-bar">
+  <a class="rail-brand" href="index.html"><span class="mark">GATE·CSE</span><span class="name">PYQ Console</span></a>
+  <button id="mobile-toggle" class="btn ghost small">Menu</button>
+</div>
+
+<div class="shell">
+  <nav class="rail" id="rail-mount"></nav>
+
+  <main class="main">
+    <section style="margin-bottom:30px;">
+      <h1 class="display-title" style="font-size:34px; margin-bottom:8px;">Every GATE CSE PYQ, one console.</h1>
+      <p class="soft" style="font-size:15.5px; max-width:640px;">3,126 previous-year questions across 14 subjects, merged with official solutions. Run a subject drill, mix your own set, or sit a full timed paper.</p>
+    </section>
+
+    <div class="stat-strip" id="stat-strip" style="margin-bottom:30px;"></div>
+
+    <div id="continue-card" style="display:none; margin-bottom:30px;"></div>
+
+    <section style="margin-bottom:34px;">
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="font-size:15px; font-family:var(--font-mono); color:var(--ink-faint);">QUICK START</h2>
+      </div>
+      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:12px;">
+        <a class="panel panel-pad" href="builder.html" style="text-decoration:none; color:inherit;">
+          <div style="font-weight:600; margin-bottom:4px;">Build a custom test</div>
+          <div class="subtle" style="font-size:13px;">Mix subjects, topics, years, difficulty &amp; type into one set.</div>
+        </a>
+        <a class="panel panel-pad" href="builder.html?bookmarks=1" style="text-decoration:none; color:inherit;">
+          <div style="font-weight:600; margin-bottom:4px;">Bookmarked questions</div>
+          <div class="subtle" style="font-size:13px;"><span id="bm-count-text">0</span> flagged for revision.</div>
+        </a>
+        <a class="panel panel-pad" href="history.html" style="text-decoration:none; color:inherit;">
+          <div style="font-weight:600; margin-bottom:4px;">Past attempts</div>
+          <div class="subtle" style="font-size:13px;">Review scores &amp; re-run your weak sets.</div>
+        </a>
+      </div>
+    </section>
+
+    <section>
+      <div style="display:flex; align-items:baseline; justify-content:space-between; margin-bottom:12px;">
+        <h2 style="font-size:15px; font-family:var(--font-mono); color:var(--ink-faint);">SUBJECTS</h2>
+      </div>
+      <div class="subject-grid" id="subject-grid"></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/state.js"></script>
+<script src="assets/js/sync.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/home.js"></script>
+</body>
+</html>
