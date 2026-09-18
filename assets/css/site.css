@@ -65,18 +65,6 @@
 }
 .rail-dial .l { display: block; font-size: 0.68rem; color: var(--ink-faint); margin-top: 1px; }
 
-.rail-countdown {
-  display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap;
-  background: var(--panel-raised); border: 1px solid var(--border-strong); border-radius: var(--radius-s);
-  padding: 10px 12px; margin: 0 2px 16px;
-}
-.rail-countdown .num {
-  font-family: var(--font-display); font-style: italic; font-weight: 500; font-size: 1.5rem; line-height: 1;
-  color: var(--ink);
-}
-.rail-countdown .lbl { font-size: 0.72rem; color: var(--ink-soft); }
-.rail-countdown .sub { flex-basis: 100%; font-family: var(--font-mono); font-size: 0.64rem; color: var(--ink-faint); margin-top: 1px; }
-
 .rail-link {
   display: flex; align-items: center; justify-content: space-between; gap: 8px;
   padding: 9px 10px; border-radius: var(--radius-s);

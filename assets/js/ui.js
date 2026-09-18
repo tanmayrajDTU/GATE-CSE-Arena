@@ -67,18 +67,6 @@ const UI = (() => {
     return null;
   }
 
-  // Days remaining until GATE CSE 2027 (6 Feb 2027). Counts local calendar
-  // days, not raw hours, so it reads e.g. "132" all day rather than
-  // flipping mid-afternoon. Returns 0 on/after exam day.
-  function daysToGate() {
-    const examDay = new Date(2027, 1, 6); // months are 0-indexed: 1 = Feb
-    examDay.setHours(0, 0, 0, 0);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const diff = Math.round((examDay - today) / 86400000);
-    return Math.max(0, diff);
-  }
-
   async function renderRail(activeSlug) {
     const mount = document.getElementById("rail-mount");
     if (!mount) return;
@@ -100,11 +88,6 @@ const UI = (() => {
       <div class="rail-dial-strip">
         <div class="rail-dial"><span class="v">${points.toLocaleString()}</span><span class="l">points</span></div>
         <div class="rail-dial"><span class="v">${streak.current > 0 ? "🔥 " + streak.current : "0"}</span><span class="l">day streak</span></div>
-      </div>
-      <div class="rail-countdown">
-        <span class="num">${daysToGate()}</span>
-        <span class="lbl">${daysToGate() === 1 ? "day" : "days"} to GATE 2027</span>
-        <span class="sub">6 Feb 2027</span>
       </div>
       <a class="rail-link ${!activeSlug && (path.endsWith('index.html') || path === '/' || path.endsWith('/site/')) ? 'active' : ''}" href="index.html">Overview</a>
       <a class="rail-link ${activeSlug === '__custom' ? 'active' : ''}" href="builder.html">Build a test</a>
@@ -170,5 +153,5 @@ const UI = (() => {
     return new URLSearchParams(location.search).get(name);
   }
 
-  return { esc, renderMath, toast, fmtTime, difficultyOf, difficultyLabel, examYear, daysToGate, renderRail, initMobileBar, qs };
+  return { esc, renderMath, toast, fmtTime, difficultyOf, difficultyLabel, examYear, renderRail, initMobileBar, qs };
 })();

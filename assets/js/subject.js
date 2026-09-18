@@ -11,7 +11,7 @@
   const main = document.getElementById("page-main");
   if (!meta) { main.innerHTML = `<div class="empty-state">Subject not found.</div>`; return; }
 
-  const state = { type: "all", difficulty: "all", year: "all", topics: new Set(), limit: null };
+  const state = { type: "all", difficulty: "all", year: "all", topics: new Set() };
   const hasYears = questions.some(q => q.year);
 
   main.innerHTML = `
@@ -46,10 +46,6 @@
         <label class="field-label">Year</label>
         <select id="year-select"></select>
       </div>` : ""}
-      <div>
-        <label class="field-label">Number of questions</label>
-        <input type="number" id="topic-limit-input" placeholder="All selected" min="1" style="width:140px;">
-      </div>
     </div>
 
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
@@ -137,30 +133,10 @@
   function updateMatchCount() {
     const pool = filteredQuestions();
     const selectedPool = state.topics.size ? pool.filter(q => state.topics.has(q.topic || "Uncategorized")) : [];
-    if (!state.topics.size) {
-      document.getElementById("match-count").textContent = `${pool.length} total in view`;
-    } else if (state.limit && state.limit < selectedPool.length) {
-      document.getElementById("match-count").textContent = `${selectedPool.length} selected · ${state.limit} will be used`;
-    } else {
-      document.getElementById("match-count").textContent = `${selectedPool.length} selected`;
-    }
+    document.getElementById("match-count").textContent = state.topics.size
+      ? `${selectedPool.length} selected`
+      : `${pool.length} total in view`;
   }
-
-  function pickLimited(pool, limit) {
-    if (!limit || limit >= pool.length) return pool;
-    const source = pool.slice();
-    const picked = [];
-    while (picked.length < limit && source.length) {
-      const i = Math.floor(Math.random() * source.length);
-      picked.push(source.splice(i, 1)[0]);
-    }
-    return picked;
-  }
-
-  document.getElementById("topic-limit-input").addEventListener("input", e => {
-    state.limit = e.target.value ? Number(e.target.value) : null;
-    updateMatchCount();
-  });
 
   document.querySelectorAll("#type-chips .chip").forEach(chip => {
     chip.addEventListener("click", () => {
@@ -190,11 +166,9 @@
 
   document.getElementById("start-selected-btn").addEventListener("click", () => {
     if (!state.topics.size) { UI.toast("Select at least one topic first."); return; }
-    let pool = filteredQuestions().filter(q => state.topics.has(q.topic || "Uncategorized"));
-    if (state.limit && state.limit < pool.length) pool = pickLimited(pool, state.limit);
+    const pool = filteredQuestions().filter(q => state.topics.has(q.topic || "Uncategorized"));
     const refs = pool.map(q => ({ s: slug, id: q.id }));
-    const countLabel = `${state.topics.size} topic${state.topics.size === 1 ? "" : "s"}`;
-    LAUNCHER.open(refs, `${meta.name} — ${countLabel} — ${refs.length} question${refs.length === 1 ? "" : "s"}`);
+    LAUNCHER.open(refs, `${meta.name} — ${state.topics.size} topic${state.topics.size === 1 ? "" : "s"}`);
   });
   document.getElementById("start-all-btn").addEventListener("click", () => {
     const pool = filteredQuestions();

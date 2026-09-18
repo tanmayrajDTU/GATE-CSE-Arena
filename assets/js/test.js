@@ -33,7 +33,10 @@
     if (visited) return "not-answered";
     return "not-visited";
   }
-  function persist() { STATE.saveDraft(draft); }
+  function persist() {
+    if (submitting) return; // never resurrect the draft after the test has been submitted
+    STATE.saveDraft(draft);
+  }
 
   function buildShell() {
     shell.innerHTML = `
@@ -248,6 +251,7 @@
   function finishTest(auto) {
     if (submitting) return;
     submitting = true;
+    window.removeEventListener("beforeunload", persist);
     if (timerHandle) clearInterval(timerHandle);
 
     let correct = 0, wrong = 0, skipped = 0, pointsEarned = 0;
