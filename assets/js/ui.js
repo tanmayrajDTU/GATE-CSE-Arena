@@ -94,6 +94,7 @@ const UI = (() => {
       <a class="rail-link ${activeSlug === '__bookmarks' ? 'active' : ''}" href="builder.html?bookmarks=1">
         <span>Bookmarked</span><span class="count">${bmCount}</span>
       </a>
+      <a class="rail-link ${activeSlug === '__browse' ? 'active' : ''}" href="browse.html">Browse &amp; reveal</a>
       <a class="rail-link ${activeSlug === '__history' ? 'active' : ''}" href="history.html">History</a>
       <a class="rail-link ${activeSlug === '__achievements' ? 'active' : ''}" href="achievements.html">Achievements</a>
       <a class="rail-link ${activeSlug === '__settings' ? 'active' : ''}" href="settings.html">

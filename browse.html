@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Browse &amp; Reveal — Practice Engine</title>
+<meta name="description" content="Browse GATE CSE practice questions and PYQs and reveal answers, option feedback and full solutions instantly.">
+<script>
+  (function () {
+    var m = localStorage.getItem("pe-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", m);
+  })();
+</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/css/tokens.css?v=1789699651">
+<link rel="stylesheet" href="assets/css/site.css?v=1789699651">
+<style>
+  /* Scoped to the browse page only — nothing here affects other pages. */
+  .browse-card { margin-bottom: 16px; padding: 18px 20px; }
+  .browse-card .q-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
+  .browse-answer { margin-top: 14px; }
+  .browse-answer[hidden] { display: none; }
+  .answer-pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--correct); color: var(--correct);
+    background: var(--correct-wash); font-size: 0.85rem; font-weight: 600;
+  }
+  .browse-toolbar { padding: 18px 22px; margin-bottom: 18px; display: flex; gap: 24px; flex-wrap: wrap; }
+  .browse-toolbar .field-label { display: block; }
+  .browse-input {
+    background: var(--panel-inset); color: var(--ink);
+    border: 1px solid var(--border); border-radius: var(--radius-s);
+    padding: 8px 10px; font: inherit; font-size: 0.85rem; min-width: 230px;
+  }
+  .browse-input:focus { outline: none; box-shadow: var(--focus-ring); }
+  .browse-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 22px 0 8px; flex-wrap: wrap; }
+  .browse-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+</style>
+</head>
+<body class="dot-grid">
+
+<a class="skip-link" href="#page-main">Skip to content</a>
+<div class="app-shell">
+  <nav class="rail" id="rail-mount" aria-label="Primary"></nav>
+
+  <div class="main-col">
+    <div class="topbar">
+      <button class="icon-btn" id="mobile-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+      <span style="font-weight:600; font-size:0.9rem;" id="topbar-label">Practice Engine</span>
+      <span style="width:36px;"></span>
+    </div>
+
+    <main class="page-main" id="page-main" tabindex="-1"></main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="assets/js/mode.js?v=1789699651"></script>
+<script src="assets/js/theme.js?v=1789699651"></script>
+<script src="assets/js/db.js?v=1789699651"></script>
+<script src="assets/js/state.js?v=1789699651"></script>
+<script src="assets/js/supabase-sync.js?v=1789699651"></script>
+<script src="assets/js/ui.js?v=1789699651"></script>
+<script src="assets/js/launcher.js?v=1789699651"></script>
+<script src="assets/js/browse.js?v=1789699651"></script>
+</body>
+</html>
