@@ -64,12 +64,12 @@
     </div>
 
     <div style="display:flex; gap:10px; margin-bottom:22px; flex-wrap:wrap;">
-      <button class="btn btn--primary" id="retry-wrong-btn">Retry incorrect &amp; skipped</button>
+      ${result.itemsTrimmed ? "" : `<button class="btn btn--primary" id="retry-wrong-btn">Retry incorrect &amp; skipped</button>`}
       <a class="btn" href="history.html">Back to history</a>
       <a class="btn btn--ghost" href="achievements.html">View achievements</a>
     </div>
 
-    ${topicRows.length > 1 ? `
+    ${!result.itemsTrimmed && topicRows.length > 1 ? `
       <div class="panel" style="padding:18px 20px; margin-bottom:24px; overflow-x:auto;">
         <div style="font-size:0.85rem; font-weight:600; margin-bottom:12px;">By topic</div>
         <table class="topic-table">
@@ -91,6 +91,11 @@
       </div>
     ` : ""}
 
+    ${result.itemsTrimmed ? `
+      <div class="panel" style="padding:14px 18px; margin-bottom:22px; border-color:var(--border-strong); color:var(--ink-faint); font-size:0.85rem;">
+        The per-question review for this older result was trimmed to save space (your score above is still accurate).
+      </div>
+    ` : `
     <div class="chip-row" id="review-filter" style="margin-bottom:16px;">
       <label class="chip active" data-val="all">All (${result.total})</label>
       <label class="chip" data-val="wrong">Incorrect (${result.wrong})</label>
@@ -99,7 +104,10 @@
     </div>
 
     <div id="review-list"></div>
+    `}
   `;
+
+  if (!result.itemsTrimmed) {
 
   document.getElementById("retry-wrong-btn").addEventListener("click", () => {
     const weak = result.items.filter(it => !it.isCorrect).map(it => ({ s: it.subject, id: it.id }));
@@ -188,4 +196,5 @@
   }).join("");
 
   UI.renderMath(list);
+  } // end if (!result.itemsTrimmed)
 })();

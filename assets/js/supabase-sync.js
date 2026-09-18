@@ -138,6 +138,30 @@ const SYNC = (() => {
     }
   }
 
+  // Reads the row back from Supabase as-is (no localStorage writes) and
+  // summarizes it, so the settings page can show "here's what's actually
+  // sitting in your project" without anyone needing to open the Supabase
+  // dashboard to sanity-check that sync really worked.
+  async function fetchRemoteSummary() {
+    const c = getClient();
+    if (!c) return { ok: false, reason: "not-linked" };
+    try {
+      const { data, error } = await c.from("pe_state").select("state, updated_at").eq("user_email", SYNC_EMAIL).maybeSingle();
+      if (error) throw error;
+      if (!data) return { ok: true, exists: false };
+      const state = data.state || {};
+      const counts = {};
+      MODE.VALID.forEach(m => {
+        const hist = state[`pe:${m}:history`];
+        counts[m] = Array.isArray(hist) ? hist.length : 0;
+      });
+      return { ok: true, exists: true, updatedAt: data.updated_at, counts };
+    } catch (err) {
+      lastError = err;
+      return { ok: false, reason: "error", error: err };
+    }
+  }
+
   function schedulePush() {
     if (!isLinked()) return;
     clearTimeout(pushTimer);
@@ -183,6 +207,6 @@ const SYNC = (() => {
 
   return {
     SYNC_EMAIL, isSyncedKey, isLinked, getConfig, setConfig, unlink,
-    ready, schedulePush, pushNow, getLastError,
+    ready, schedulePush, pushNow, fetchRemoteSummary, getLastError,
   };
 })();

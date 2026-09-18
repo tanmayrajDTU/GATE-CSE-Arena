@@ -29,17 +29,84 @@ const STATE = (() => {
 
   const POINTS_BY_DIFFICULTY = { easy: 5, medium: 10, hard: 20, unknown: 8 };
 
+  // Full-bank tests (esp. Practice, which has ~2x PYQ's question count) can
+  // produce history entries over 1MB each. Keep full per-question detail
+  // only for the most recent MAX_DETAILED entries; older ones fall back to
+  // score/summary only. Keeps storage bounded even after hundreds of tests.
+  const MAX_DETAILED_HISTORY = 60;
+  const MAX_HISTORY_TOTAL = 200;
+
   function read(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
       return raw ? JSON.parse(raw) : fallback;
     } catch (e) { return fallback; }
   }
+
   function write(key, val) {
     try {
       localStorage.setItem(key, JSON.stringify(val));
       if (window.SYNC && window.SYNC.isSyncedKey(key)) window.SYNC.schedulePush();
-    } catch (e) {}
+      return true;
+    } catch (e) {
+      console.warn("STATE: write failed for", key, e);
+      if (window.UI) UI.toast("Couldn't save — your browser's storage for this site is full.");
+      return false;
+    }
+  }
+
+  // History gets a dedicated, resilient writer: a single large result (a
+  // full-bank test) can push storage over quota. Rather than losing the
+  // just-finished test silently, progressively shrink OLDER entries (detail
+  // first, then drop them outright) until the write fits — the newest
+  // result is only ever sacrificed as an absolute last resort.
+  function writeHistorySafely(list) {
+    try {
+      localStorage.setItem(K_HISTORY, JSON.stringify(list));
+      if (window.SYNC && window.SYNC.isSyncedKey(K_HISTORY)) window.SYNC.schedulePush();
+      return true;
+    } catch (e) {
+      let working = list.slice();
+      let trimmedDetail = false;
+
+      // Pass 1: strip per-question "items" from the oldest entries first
+      // (newest, working[0], kept detailed as long as possible).
+      for (let i = working.length - 1; i >= 1; i--) {
+        if (working[i].items && working[i].items.length) {
+          working[i] = { ...working[i], items: [], itemsTrimmed: true };
+          trimmedDetail = true;
+          try {
+            localStorage.setItem(K_HISTORY, JSON.stringify(working));
+            if (window.UI) UI.toast("Storage was nearly full — older test reviews were trimmed to summaries only.");
+            return true;
+          } catch (e2) { /* keep trimming */ }
+        }
+      }
+
+      // Pass 2: still doesn't fit — drop oldest entries outright.
+      while (working.length > 1) {
+        working.pop();
+        try {
+          localStorage.setItem(K_HISTORY, JSON.stringify(working));
+          if (window.UI) UI.toast("Storage was full — some older test history was removed to make room.");
+          return true;
+        } catch (e3) { /* keep dropping */ }
+      }
+
+      // Pass 3: even one (now detail-stripped) entry doesn't fit.
+      if (working.length === 1 && working[0].items && working[0].items.length) {
+        working[0] = { ...working[0], items: [], itemsTrimmed: true };
+        try {
+          localStorage.setItem(K_HISTORY, JSON.stringify(working));
+          if (window.UI) UI.toast("Storage was full — saved this result's score only, not the per-question review.");
+          return true;
+        } catch (e4) { /* fall through to failure */ }
+      }
+
+      console.warn("STATE: could not persist history even after trimming.", e);
+      if (window.UI) UI.toast("Couldn't save this result — storage for this site is completely full.");
+      return false;
+    }
   }
 
   // ---------- bookmarks ----------
@@ -150,8 +217,13 @@ const STATE = (() => {
   function saveResult(result) {
     const h = read(K_HISTORY, []);
     h.unshift(result);
-    if (h.length > 200) h.length = 200;
-    write(K_HISTORY, h);
+    if (h.length > MAX_HISTORY_TOTAL) h.length = MAX_HISTORY_TOTAL;
+    // Proactively cap detail on anything past the recent window, so history
+    // doesn't creep back up to quota-exceeded territory between big tests.
+    for (let i = MAX_DETAILED_HISTORY; i < h.length; i++) {
+      if (h[i].items && h[i].items.length) h[i] = { ...h[i], items: [], itemsTrimmed: true };
+    }
+    return writeHistorySafely(h);
   }
   function getHistory() { return read(K_HISTORY, []); }
   function getResult(id) { return read(K_HISTORY, []).find(r => r.id === id); }

@@ -37,8 +37,14 @@
 
         <div style="display:flex; gap:10px; flex-wrap:wrap;">
           <button class="btn btn--primary" id="save-btn">Save</button>
-          ${linked ? `<button class="btn" id="sync-now-btn">Sync now</button><button class="btn btn--ghost" id="unlink-btn">Unlink</button>` : ""}
+          ${linked ? `<button class="btn" id="sync-now-btn">Sync now</button><button class="btn btn--ghost" id="check-remote-btn">Check what's synced</button><button class="btn btn--ghost" id="unlink-btn">Unlink</button>` : ""}
         </div>
+        <div id="remote-summary" style="margin-top:14px; font-size:0.82rem; color:var(--ink-soft);"></div>
+      </div>
+
+      <div class="panel" style="padding:18px 22px; margin-bottom:20px; max-width:560px; font-size:0.82rem; color:var(--ink-soft);">
+        <strong style="display:block; margin-bottom:8px; color:var(--ink);">How this is stored</strong>
+        <p style="margin:0;">One row per email in <code>pe_state</code>, holding everything (bookmarks, history, points, streak, achievements — for both Practice and PYQ) as a single JSON blob in the <code>state</code> column. A finished test becomes one entry inside that blob's <code>pe:practice:history</code> or <code>pe:pyq:history</code> array — not a separate table row. So a "Test Results" table, if you have one from an earlier version of this tool, is never written to; check the <code>pe_state</code> row's <code>state</code> column instead, or use "Check what's synced" above.</p>
       </div>
 
       <div class="panel" style="padding:18px 22px; max-width:560px; font-size:0.82rem; color:var(--ink-soft);">
@@ -76,6 +82,23 @@ create policy "anon read/write" on pe_state
       UI.toast(res.ok ? "Synced" : "Sync failed — check the error below");
       syncBtn.disabled = false;
       render();
+    });
+
+    const checkBtn = document.getElementById("check-remote-btn");
+    if (checkBtn) checkBtn.addEventListener("click", async () => {
+      checkBtn.disabled = true;
+      const summaryEl = document.getElementById("remote-summary");
+      summaryEl.textContent = "Checking…";
+      const res = await SYNC.fetchRemoteSummary();
+      if (!res.ok) {
+        summaryEl.textContent = "Couldn't reach Supabase — see the error below.";
+      } else if (!res.exists) {
+        summaryEl.textContent = "No row exists yet for this email in pe_state. Click \"Sync now\" first.";
+      } else {
+        const parts = Object.entries(res.counts).map(([m, n]) => `${n} ${MODE.label(m)} result${n === 1 ? "" : "s"}`);
+        summaryEl.innerHTML = `<strong>In Supabase right now</strong> (updated ${new Date(res.updatedAt).toLocaleString()}): ${parts.join(", ")}.`;
+      }
+      checkBtn.disabled = false;
     });
 
     const unlinkBtn = document.getElementById("unlink-btn");
