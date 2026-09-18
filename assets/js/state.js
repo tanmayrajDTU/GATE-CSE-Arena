@@ -36,6 +36,37 @@ const STATE = (() => {
   const MAX_DETAILED_HISTORY = 60;
   const MAX_HISTORY_TOTAL = 200;
 
+  // Hard budget for the serialized history blob. Practice has ~2x PYQ's
+  // question bank, so full-subject Practice tests (600-900 questions) produce
+  // history entries an order of magnitude bigger than any PYQ test — 60 of
+  // those blew past the ~5MB localStorage quota, which is why Practice
+  // submissions were silently failing to persist while PYQ ones were fine.
+  // Detail is now dropped oldest-first until the blob fits this budget,
+  // BEFORE we ever hand it to localStorage.
+  const HISTORY_BYTE_BUDGET = 2_000_000;
+
+  // Belt-and-braces: the just-finished result is also parked in
+  // sessionStorage (separate quota, survives the navigation to results.html)
+  // so a full-storage or sync race can never lose the result the user is
+  // about to look at. results.js reads this if history lookup misses.
+  const SS_LAST_RESULT = "pe:lastResult";
+
+  function stashLastResult(result) {
+    try { sessionStorage.setItem(SS_LAST_RESULT, JSON.stringify(result)); } catch (e) {
+      try {
+        sessionStorage.setItem(SS_LAST_RESULT, JSON.stringify({ ...result, items: [], itemsTrimmed: true }));
+      } catch (e2) { /* nothing more we can do */ }
+    }
+  }
+  function getStashedResult(id) {
+    try {
+      const raw = sessionStorage.getItem(SS_LAST_RESULT);
+      if (!raw) return null;
+      const r = JSON.parse(raw);
+      return (!id || r.id === id) ? r : null;
+    } catch (e) { return null; }
+  }
+
   function read(key, fallback) {
     try {
       const raw = localStorage.getItem(key);
@@ -215,6 +246,8 @@ const STATE = (() => {
 
   // ---------- test history ----------
   function saveResult(result) {
+    stashLastResult(result);
+
     const h = read(K_HISTORY, []);
     h.unshift(result);
     if (h.length > MAX_HISTORY_TOTAL) h.length = MAX_HISTORY_TOTAL;
@@ -223,10 +256,36 @@ const STATE = (() => {
     for (let i = MAX_DETAILED_HISTORY; i < h.length; i++) {
       if (h[i].items && h[i].items.length) h[i] = { ...h[i], items: [], itemsTrimmed: true };
     }
+    // Then enforce the byte budget, dropping per-question detail oldest-first.
+    // The newest entry (h[0], the one just submitted) keeps its detail unless
+    // it alone blows the budget.
+    for (let i = h.length - 1; i >= 1 && JSON.stringify(h).length > HISTORY_BYTE_BUDGET; i--) {
+      if (h[i].items && h[i].items.length) h[i] = { ...h[i], items: [], itemsTrimmed: true };
+    }
+    if (JSON.stringify(h).length > HISTORY_BYTE_BUDGET && h[0].items && h[0].items.length) {
+      h[0] = { ...h[0], items: [], itemsTrimmed: true };
+    }
     return writeHistorySafely(h);
   }
   function getHistory() { return read(K_HISTORY, []); }
-  function getResult(id) { return read(K_HISTORY, []).find(r => r.id === id); }
+  function getResult(id) {
+    const found = read(K_HISTORY, []).find(r => r.id === id);
+    if (found) return found;
+    // Not in history: either the write failed (storage full) or a sync pull
+    // landed between saving and navigating. Recover from the session stash
+    // and put it back into history so it shows up in the history page too.
+    const stashed = getStashedResult(id);
+    if (stashed) {
+      const h = read(K_HISTORY, []);
+      if (!h.some(r => r.id === stashed.id)) {
+        h.unshift(stashed);
+        if (h.length > MAX_HISTORY_TOTAL) h.length = MAX_HISTORY_TOTAL;
+        writeHistorySafely(h);
+      }
+      return stashed;
+    }
+    return undefined;
+  }
   function clearHistory() { write(K_HISTORY, []); }
 
   // ---------- active/in-progress test (survives reload, one at a time, local-only) ----------
@@ -239,7 +298,7 @@ const STATE = (() => {
     recordOutcome, getSeenMap, getTotals, getSubjectStats, getTypeStats, getPoints,
     touchStreak, getStreak,
     getUnlockedAchievements, unlockAchievements,
-    saveResult, getHistory, getResult, clearHistory,
+    saveResult, getHistory, getResult, clearHistory, getStashedResult,
     saveDraft, getDraft, clearDraft,
   };
 })();

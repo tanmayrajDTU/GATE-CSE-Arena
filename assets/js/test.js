@@ -248,7 +248,21 @@
     if (window.confirm(msg)) finishTest(false);
   }
 
-  function finishTest(auto) {
+  // Flush any pending sync push before leaving the page — the normal push is
+  // debounced ~900ms, which the navigation to results.html used to cancel,
+  // leaving the freshly-saved result unsynced (and then overwritten by the
+  // next pull). Capped so a slow/offline network never blocks the user.
+  async function flushSync() {
+    try {
+      if (!window.SYNC || !SYNC.isLinked()) return;
+      await Promise.race([
+        SYNC.pushNow(),
+        new Promise(res => setTimeout(res, 2500)),
+      ]);
+    } catch (e) { /* sync is best-effort; the result is already saved locally */ }
+  }
+
+  async function finishTest(auto) {
     if (submitting) return;
     submitting = true;
     window.removeEventListener("beforeunload", persist);
@@ -287,7 +301,11 @@
     });
 
     const streak = STATE.touchStreak();
-    const newAchievements = ACHIEVEMENTS.evaluateAndUnlock().map(a => ({ id: a.id, name: a.name, desc: a.desc, icon: a.icon }));
+    // Never let achievement evaluation take the whole submission down with it.
+    let newAchievements = [];
+    try {
+      newAchievements = ACHIEVEMENTS.evaluateAndUnlock().map(a => ({ id: a.id, name: a.name, desc: a.desc, icon: a.icon }));
+    } catch (e) { console.warn("Achievement evaluation failed:", e); }
 
     const timeTakenSeconds = draft.timed
       ? draft.totalSeconds - draft.remainingSeconds
@@ -308,8 +326,14 @@
       newAchievements,
       items,
     };
-    STATE.saveResult(result);
+    const saved = STATE.saveResult(result);
     STATE.clearDraft();
+    if (!saved) {
+      // saveResult always parks a copy in sessionStorage, so the results page
+      // can still render this attempt even if history couldn't be persisted.
+      UI.toast("Storage is full — showing this result, but history may not keep it.");
+    }
+    await flushSync();
     location.href = "results.html?id=" + result.id;
   }
 

@@ -7,12 +7,20 @@
   const result = id ? STATE.getResult(id) : null;
   const main = document.getElementById("page-main");
   if (!result) {
-    main.innerHTML = `<div class="empty-state">Result not found. <a href="history.html">View history</a>.</div>`;
+    main.innerHTML = `<div class="empty-state">Result not found — it may not have been saved. <a href="history.html">View history</a>.</div>`;
     return;
   }
 
   const refs = result.items.map(it => ({ s: it.subject, id: it.id }));
-  const questions = await DB.resolveRefs(refs);
+  // A failed question-file fetch must not leave a blank page — the score
+  // summary below can render fine without the per-question review.
+  let questions = [];
+  try {
+    questions = await DB.resolveRefs(refs);
+  } catch (e) {
+    console.warn("Could not load questions for review:", e);
+    result.itemsTrimmed = true;
+  }
   const qById = {};
   questions.forEach(q => { qById[q.id] = q; });
 

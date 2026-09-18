@@ -101,6 +101,22 @@ const SYNC = (() => {
     return client;
   }
 
+  // Keep the pushed payload small. Per-question "items" arrays dominate the
+  // blob — a single full-subject Practice test carries hundreds of them — and
+  // an oversized upsert fails, which used to leave the remote row stale while
+  // the next pull overwrote the good local data. Scores and summaries always
+  // go up; detailed reviews stay local past the most recent few.
+  const PUSH_DETAILED_HISTORY = 5;
+  const PUSH_BYTE_BUDGET = 1_200_000;
+
+  function slimHistory(list, keepDetailed) {
+    if (!Array.isArray(list)) return list;
+    return list.map((r, i) =>
+      (i < keepDetailed || !r || !r.items || !r.items.length)
+        ? r
+        : { ...r, items: [], itemsTrimmed: true });
+  }
+
   function collectLocalState() {
     const state = {};
     SYNC_KEYS.forEach(k => {
@@ -109,14 +125,104 @@ const SYNC = (() => {
         try { state[k] = JSON.parse(raw); } catch (e) { /* skip corrupt value */ }
       }
     });
+
+    const historyKeys = SYNC_KEYS.filter(k => k.endsWith(":history"));
+    historyKeys.forEach(k => { state[k] = slimHistory(state[k], PUSH_DETAILED_HISTORY); });
+    if (JSON.stringify(state).length > PUSH_BYTE_BUDGET) {
+      historyKeys.forEach(k => { state[k] = slimHistory(state[k], 0); });
+    }
     return state;
   }
 
+  // Remote state is MERGED into local, never blindly overwritten.
+  //
+  // The old behaviour (straight overwrite) lost any local change that hadn't
+  // been pushed yet — and pushes are debounced by 900ms, so a test submitted
+  // and immediately followed by navigation to results.html was still sitting
+  // unpushed when results.html pulled the stale remote row over the top of it.
+  // The result then vanished from both the results page and history.
+  function mergeKey(key, remoteVal, localVal) {
+    if (localVal === undefined || localVal === null) return remoteVal;
+    if (remoteVal === undefined || remoteVal === null) return localVal;
+    const suffix = key.split(":")[2];
+
+    if (suffix === "history") {
+      const a = Array.isArray(localVal) ? localVal : [];
+      const b = Array.isArray(remoteVal) ? remoteVal : [];
+      const seen = new Set();
+      const out = [];
+      // Local first, so a local entry that still has per-question detail wins
+      // over a trimmed copy of the same result from another device.
+      [...a, ...b].forEach(r => {
+        if (!r || !r.id || seen.has(r.id)) return;
+        seen.add(r.id);
+        out.push(r);
+      });
+      out.sort((x, y) => (y.ts || 0) - (x.ts || 0));
+      return out.slice(0, 200);
+    }
+
+    if (suffix === "bookmarks" || suffix === "achievements") {
+      return { ...remoteVal, ...localVal }; // union; local wins on conflict
+    }
+
+    if (suffix === "seen") {
+      const out = { ...remoteVal };
+      Object.keys(localVal).forEach(k => {
+        const l = localVal[k], r = out[k];
+        out[k] = (!r || (l && (l.ts || 0) >= (r.ts || 0))) ? l : r;
+      });
+      return out;
+    }
+
+    if (suffix === "points") {
+      return Math.max(Number(localVal) || 0, Number(remoteVal) || 0);
+    }
+
+    if (suffix === "streak") {
+      const l = localVal || {}, r = remoteVal || {};
+      const newer = (l.lastActiveDate || "") >= (r.lastActiveDate || "") ? l : r;
+      return { ...newer, longest: Math.max(l.longest || 0, r.longest || 0) };
+    }
+
+    if (suffix === "subjectStats" || suffix === "typeStats" || suffix === "totals") {
+      if (suffix === "totals") {
+        return {
+          attempted: Math.max(localVal.attempted || 0, remoteVal.attempted || 0),
+          correct: Math.max(localVal.correct || 0, remoteVal.correct || 0),
+        };
+      }
+      const out = { ...remoteVal };
+      Object.keys(localVal).forEach(k => {
+        const l = localVal[k] || {}, r = out[k] || {};
+        out[k] = {
+          attempted: Math.max(l.attempted || 0, r.attempted || 0),
+          correct: Math.max(l.correct || 0, r.correct || 0),
+        };
+      });
+      return out;
+    }
+
+    return remoteVal;
+  }
+
   function applyRemoteState(remote) {
-    if (!remote || typeof remote !== "object") return;
+    if (!remote || typeof remote !== "object") return false;
+    let localWasAhead = false;
     SYNC_KEYS.forEach(k => {
-      if (remote[k] !== undefined) localStorage.setItem(k, JSON.stringify(remote[k]));
+      if (remote[k] === undefined) {
+        if (localStorage.getItem(k) !== null) localWasAhead = true;
+        return;
+      }
+      let localVal;
+      const raw = localStorage.getItem(k);
+      if (raw !== null) { try { localVal = JSON.parse(raw); } catch (e) { localVal = undefined; } }
+      const merged = mergeKey(k, remote[k], localVal);
+      const mergedStr = JSON.stringify(merged);
+      if (mergedStr !== JSON.stringify(remote[k])) localWasAhead = true;
+      try { localStorage.setItem(k, mergedStr); } catch (e) { /* quota — keep local */ }
     });
+    return localWasAhead;
   }
 
   async function pushNow() {
@@ -178,7 +284,10 @@ const SYNC = (() => {
       const { data, error } = await c.from("pe_state").select("state, updated_at").eq("user_email", SYNC_EMAIL).maybeSingle();
       if (error) throw error;
       if (data && data.state) {
-        applyRemoteState(data.state);
+        const localWasAhead = applyRemoteState(data.state);
+        // If local had anything the remote row didn't, push the merged state
+        // straight back so the two converge instead of fighting each other.
+        if (localWasAhead) await pushNow();
         return { ok: true, action: "pulled" };
       }
       await pushNow();
