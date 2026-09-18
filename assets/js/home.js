@@ -1,56 +1,65 @@
 (async function () {
   UI.initMobileBar();
+  await SYNC.ready();
   await UI.renderRail(null);
 
   const manifest = await DB.getManifest();
+  const totals = STATE.getTotals();
+  const mode = MODE.get();
+  const isPyq = mode === "pyq";
 
-  // stat strip
+  document.getElementById("page-kicker").textContent = isPyq ? "PYQ OVERVIEW" : "OVERVIEW";
+  document.getElementById("page-title-text").textContent = isPyq
+    ? "Previous Year Questions, subject by subject"
+    : "Practice questions, drilled properly";
+  document.getElementById("page-sub-text").textContent = isPyq
+    ? `${manifest.totalQuestions.toLocaleString()} actual GATE questions across 14 subjects` +
+      (manifest.years && manifest.years.length ? `, spanning ${manifest.years[0]}–${manifest.years[manifest.years.length - 1]}` : "") +
+      " — filter by year, browse by topic, and drill the exact questions GATE has asked."
+    : `${manifest.totalQuestions.toLocaleString()} questions across 14 GATE CSE subjects — MCQ, MSQ and NAT — each with a full solution and per-option feedback explaining why every choice is right or wrong.`;
+
   const strip = document.getElementById("stat-strip");
+  const yearSpan = (manifest.years && manifest.years.length)
+    ? `<div class="stat-cell"><div class="stat-num">${manifest.years[0]}–${manifest.years[manifest.years.length - 1]}</div><div class="stat-label">Year span</div></div>`
+    : "";
   strip.innerHTML = `
-    <div class="stat-cell"><div class="stat-num mono">${manifest.totalQuestions.toLocaleString()}</div><div class="stat-label">Total questions</div></div>
-    <div class="stat-cell"><div class="stat-num mono">${manifest.subjects.length}</div><div class="stat-label">Subjects</div></div>
-    <div class="stat-cell"><div class="stat-num mono">${manifest.years[0]}–${manifest.years[manifest.years.length - 1]}</div><div class="stat-label">Year span</div></div>
-    <div class="stat-cell"><div class="stat-num mono">${STATE.bookmarkCount()}</div><div class="stat-label">Bookmarked</div></div>
+    <div class="stat-cell"><div class="stat-num">${manifest.totalQuestions.toLocaleString()}</div><div class="stat-label">Total questions</div></div>
+    <div class="stat-cell"><div class="stat-num">${totals.attempted.toLocaleString()}</div><div class="stat-label">You've attempted</div></div>
+    <div class="stat-cell"><div class="stat-num">${totals.attempted ? Math.round((totals.correct / totals.attempted) * 100) : 0}%</div><div class="stat-label">Your accuracy</div></div>
+    ${yearSpan}
+    <div class="stat-cell"><div class="stat-num" style="color:var(--dial)">${STATE.bookmarkCount()}</div><div class="stat-label">Bookmarked</div></div>
   `;
-  document.getElementById("bm-count-text").textContent = STATE.bookmarkCount();
 
-  // continue card
   const draft = STATE.getDraft();
   if (draft && draft.refs && draft.refs.length) {
     const answeredCount = Object.keys(draft.answers || {}).length;
     const card = document.getElementById("continue-card");
     card.style.display = "block";
     card.innerHTML = `
-      <div class="panel panel-pad" style="display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-color:var(--accent);">
+      <div class="panel" style="padding:18px 22px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; border-color:var(--signal);">
         <div>
           <div style="font-weight:600; margin-bottom:3px;">Resume: ${UI.esc(draft.title)}</div>
-          <div class="subtle" style="font-size:13px;">${answeredCount} of ${draft.refs.length} answered${draft.timed ? " · timed" : ""}</div>
+          <div style="font-size:13px; color:var(--ink-faint);">${answeredCount} of ${draft.refs.length} answered${draft.timed ? " · timed" : ""}</div>
         </div>
-        <a class="btn accent" href="test.html?resume=1">Resume test</a>
+        <a class="btn btn--primary" href="test.html">Resume test</a>
       </div>
     `;
   }
 
-  // subject grid
   const grid = document.getElementById("subject-grid");
-  grid.innerHTML = manifest.subjects.map((s, i) => {
-    const allIds = null; // progress computed lazily below is expensive; use lightweight per-subject cached count instead
-    return `
+  grid.innerHTML = manifest.subjects.map((s, i) => `
     <a class="subject-card" href="subject.html?s=${s.slug}">
       <div class="idx">${String(i + 1).padStart(2, "0")} / SUBJECT</div>
       <div class="title">${UI.esc(s.name)}</div>
-      <div style="display:flex; gap:6px; flex-wrap:wrap;">
+      <div class="tags">
         <span class="tag">${s.types.MCQ || 0} MCQ</span>
         ${s.types.MSQ ? `<span class="tag">${s.types.MSQ} MSQ</span>` : ""}
         ${s.types.NAT ? `<span class="tag">${s.types.NAT} NAT</span>` : ""}
       </div>
       <div class="bar" data-slug="${s.slug}" data-total="${s.count}"><i style="width:0%"></i></div>
       <div class="foot"><span>${s.topics.length} topics</span><span>${s.count} questions</span></div>
-    </a>`;
-  }).join("");
+    </a>`).join("");
 
-  // fill progress bars from local seen-state (cheap: only touches localStorage + ids already in manifest? we need ids —
-  // to avoid loading every subject file just for the homepage, approximate using the seen map's own keys)
   const seen = STATE.getSeenMap();
   const perSubjectSeen = {};
   Object.keys(seen).forEach(k => {

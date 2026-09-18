@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Achievements — Practice Engine</title>
+<script>
+  (function () {
+    var m = localStorage.getItem("pe-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", m);
+  })();
+</script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/site.css">
+</head>
+<body class="dot-grid">
+
+<a class="skip-link" href="#page-main">Skip to content</a>
+<div class="app-shell">
+  <nav class="rail" id="rail-mount" aria-label="Primary"></nav>
+
+  <div class="main-col">
+    <div class="topbar">
+      <button class="icon-btn" id="mobile-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+      <span style="font-weight:600; font-size:0.9rem;" id="topbar-label">Practice Engine</span>
+      <span style="width:36px;"></span>
+    </div>
+
+    <main class="page-main" id="page-main" tabindex="-1"></main>
+  </div>
+</div>
+
+<script src="assets/js/mode.js"></script>
+<script src="assets/js/theme.js"></script>
+<script src="assets/js/db.js"></script>
+<script src="assets/js/state.js"></script>
+<script src="assets/js/supabase-sync.js"></script>
+<script src="assets/js/achievements.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/achievements-page.js"></script>
+</body>
+</html>

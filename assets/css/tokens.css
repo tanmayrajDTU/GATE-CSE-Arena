@@ -1,0 +1,363 @@
+/* ============================================================
+   GATE CSE Practice Engine — "Atelier" design system
+   ============================================================
+   Concept: a private study room, not a dashboard. Textured
+   near-black (fine grain + soft vignette, never flat), hairline
+   borders instead of filled blocks, glass panels that reveal the
+   texture behind them, an editorial display serif (Bodoni Moda)
+   reserved for headlines and big numerals, a light UI sans (Inter)
+   for everything functional, and monospace for data tags/timers.
+
+   Two metal accents, each with one job:
+   - --signal (gold)   — the only interactive color. Hover states,
+                          selection, links, the primary button, focus.
+   - --dial   (bronze) — reserved exclusively for streaks, points and
+                          achievements. Never appears on anything
+                          clickable, so "you earned this" never reads
+                          as "you can act on this."
+   Correctness feedback (correct / incorrect / marked) is a separate
+   fixed jewel-tone palette, deliberately muted so it never competes
+   with the metal accents.
+
+   Light mode ("Atelier Ivory") is a genuine second variant — warm
+   paper, not an inversion of the dark palette.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Bodoni+Moda:ital,opsz,wght@0,6..96,400;0,6..96,500;0,6..96,600;0,6..96,700;1,6..96,400;1,6..96,500&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* --- surfaces --- */
+  --bg:            #08090B;
+  --bg-vignette:
+    radial-gradient(ellipse 900px 520px at 15% -10%, rgba(255,255,255,0.05), transparent 60%),
+    radial-gradient(ellipse 700px 620px at 100% 8%, rgba(185,143,78,0.08), transparent 55%);
+  --panel:         rgba(255,255,255,0.035);
+  --panel-blur:    18px;
+  --panel-raised:  rgba(255,255,255,0.055);
+  --panel-inset:   #0D0E11;
+  --border:        rgba(255,255,255,0.09);
+  --border-strong: rgba(255,255,255,0.17);
+
+  /* --- ink --- */
+  --ink:           #EDEEF0;
+  --ink-soft:      #9BA0A8;
+  --ink-faint:     #63676E;
+
+  /* --- signal: gold, the one interactive accent --- */
+  --signal:        #B98F4E;
+  --signal-strong: #E8CB98;
+  --signal-deep:   #7A5B2B;
+  --signal-wash:   rgba(185, 143, 78, 0.14);
+  --signal-ink:    #14100A;
+  --signal-gradient: linear-gradient(120deg, var(--signal-deep), var(--signal-strong) 50%, var(--signal));
+  --panel-highlight: var(--signal-strong);
+
+  /* --- dial: bronze, reserved for streaks/points/achievements ONLY --- */
+  --dial:          #B87556;
+  --dial-strong:   #E8B597;
+  --dial-deep:     #7A4B36;
+  --dial-wash:     rgba(184, 117, 86, 0.14);
+  --dial-gradient: linear-gradient(150deg, var(--dial-strong), var(--dial-deep));
+
+  /* --- correctness feedback: muted jewel tones, fixed meaning --- */
+  --correct:       #3FAE79;
+  --correct-wash:  rgba(63, 174, 121, 0.13);
+  --incorrect:     #C0564E;
+  --incorrect-wash:rgba(192, 86, 78, 0.13);
+  --marked:        #8C7BC4;
+  --marked-wash:   rgba(140, 123, 196, 0.15);
+  --neutral:       #565B63;
+  --neutral-wash:  rgba(86, 91, 99, 0.14);
+
+  /* --- difficulty gauge --- */
+  --diff-easy:     #3FAE79;
+  --diff-medium:   #C99A5D;
+  --diff-hard:     #C0564E;
+  --diff-unknown:  #63676E;
+
+  --shadow-panel: 0 1px 0 rgba(255,255,255,0.04) inset, 0 24px 48px -28px rgba(0,0,0,0.7);
+  --shadow-pop:   0 16px 36px -14px rgba(0,0,0,0.6);
+  --focus-ring:   0 0 0 2px var(--bg), 0 0 0 4px var(--signal);
+
+  --grain-opacity: 0.035;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+
+  /* Atelier Ivory — warm paper, not an inverted dark palette */
+  --bg:            #F3EEE4;
+  --bg-vignette:
+    radial-gradient(ellipse 900px 520px at 15% -10%, rgba(255,255,255,0.7), transparent 60%),
+    radial-gradient(ellipse 700px 620px at 100% 8%, rgba(122,91,43,0.07), transparent 55%);
+  --panel:         rgba(255,255,255,0.55);
+  --panel-blur:    14px;
+  --panel-raised:  rgba(255,255,255,0.75);
+  --panel-inset:   #EAE3D4;
+  --border:        rgba(28,22,14,0.10);
+  --border-strong: rgba(28,22,14,0.20);
+
+  --ink:           #1C1710;
+  --ink-soft:      #5C5346;
+  --ink-faint:     #8C8272;
+
+  --signal:        #8A6A2E;
+  --signal-strong: #6B5222;
+  --signal-deep:   #5C4419;
+  --signal-wash:   rgba(138, 106, 46, 0.12);
+  --signal-ink:    #FFFFFF;
+  --signal-gradient: linear-gradient(120deg, var(--signal-deep), var(--signal) 55%, var(--signal-strong));
+  --panel-highlight: rgba(255,255,255,0.9);
+
+  --dial:          #8C5A3E;
+  --dial-strong:   #6E4530;
+  --dial-deep:     #5C3A28;
+  --dial-wash:     rgba(140, 90, 62, 0.12);
+  --dial-gradient: linear-gradient(150deg, var(--dial), var(--dial-deep));
+
+  --correct:       #2D7E58;
+  --correct-wash:  rgba(45, 126, 88, 0.10);
+  --incorrect:     #A8433B;
+  --incorrect-wash:rgba(168, 67, 59, 0.10);
+  --marked:        #6952A3;
+  --marked-wash:   rgba(105, 82, 163, 0.10);
+  --neutral:       #8C8272;
+  --neutral-wash:  rgba(140, 130, 114, 0.12);
+
+  --diff-easy:     #2D7E58;
+  --diff-medium:   #8C5A3E;
+  --diff-hard:     #A8433B;
+  --diff-unknown:  #8C8272;
+
+  --shadow-panel: 0 1px 0 rgba(255,255,255,0.6) inset, 0 18px 36px -22px rgba(28,22,14,0.18);
+  --shadow-pop:   0 14px 30px -14px rgba(28,22,14,0.22);
+  --focus-ring:   0 0 0 2px var(--bg), 0 0 0 4px var(--signal);
+
+  --grain-opacity: 0.02;
+}
+
+/* --- type --- */
+:root {
+  --font-display: 'Bodoni Moda', Georgia, serif;
+  --font-ui:      'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --font-read:    'Inter', -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --radius-s: 6px;
+  --radius-m: 8px;
+  --radius-l: 14px;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg-vignette), var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-weight: 300;
+  font-size: 15.5px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .25s ease, color .25s ease;
+  position: relative;
+}
+
+img { max-width: 100%; }
+a { color: inherit; }
+button { font-family: inherit; }
+
+/* fine grain so the near-black/ivory reads as a material, not flat pixels */
+.dot-grid { position: relative; }
+.dot-grid::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  opacity: var(--grain-opacity); mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.dot-grid > * { position: relative; z-index: 1; }
+
+.gradient-text {
+  background: var(--signal-gradient);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.gradient-text-dial {
+  background: var(--dial-gradient);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+
+::selection { background: var(--signal-wash); color: var(--ink); }
+
+/* --- accessibility: skip link + reduced motion --- */
+.skip-link {
+  position: absolute; left: 12px; top: -48px;
+  background: var(--signal); color: var(--signal-ink);
+  padding: 10px 16px; border-radius: var(--radius-s);
+  font-family: var(--font-ui); font-size: 0.85rem; font-weight: 500;
+  z-index: 500; transition: top .15s ease;
+}
+.skip-link:focus { top: 12px; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* --- reading content: questions, options, solutions --- */
+.reading, .reading p, .reading li, .reading td, .reading th {
+  font-family: var(--font-read);
+  font-weight: 300;
+  font-size: 1.04rem;
+  line-height: 1.7;
+}
+.reading strong { font-weight: 600; }
+.reading h2, .reading h3, .reading h4 {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  margin: 1.1em 0 .5em;
+}
+.reading pre, .reading code {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+.reading pre {
+  background: var(--panel-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-s);
+  padding: 12px 14px;
+  overflow-x: auto;
+}
+.reading .q-table-wrap { overflow-x: auto; margin: 1em 0; }
+.reading table { border-collapse: collapse; width: 100%; }
+.reading td, .reading th {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
+}
+.reading th { background: var(--panel-inset); font-family: var(--font-ui); font-weight: 600; }
+.reading .q-img { border-radius: var(--radius-s); border: 1px solid var(--border); margin: 0.5em 0; }
+
+/* --- numeric / data readouts (timer, stats, question numbers) --- */
+.mono-readout {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+
+/* --- panels: glass. Translucent + blurred so the grain/vignette behind
+   shows through, with a soft top-edge highlight like a bevel. --- */
+.panel {
+  background: var(--panel);
+  backdrop-filter: blur(var(--panel-blur)) saturate(140%);
+  -webkit-backdrop-filter: blur(var(--panel-blur)) saturate(140%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-panel);
+  position: relative;
+}
+.panel::before {
+  content: "";
+  position: absolute; top: 0; left: 8%; right: 8%; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--panel-highlight), transparent);
+  opacity: 0.35; pointer-events: none;
+}
+
+/* --- gauge pill: difficulty / type indicators, treated like a data tag --- */
+.gauge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-raised);
+  color: var(--ink-soft);
+}
+.gauge::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gauge-color, var(--ink-faint));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--gauge-color, var(--ink-faint)) 18%, transparent);
+}
+.gauge--easy    { --gauge-color: var(--diff-easy); }
+.gauge--medium  { --gauge-color: var(--diff-medium); }
+.gauge--hard    { --gauge-color: var(--diff-hard); }
+.gauge--unknown { --gauge-color: var(--diff-unknown); }
+
+/* --- buttons --- */
+.btn {
+  font-family: var(--font-ui);
+  font-weight: 500;
+  font-size: 0.86rem;
+  letter-spacing: 0.01em;
+  padding: 10px 20px;
+  border-radius: var(--radius-s);
+  border: 1px solid var(--border-strong);
+  background: var(--panel-raised);
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color .15s ease, transform .1s ease, filter .15s ease;
+}
+.btn:hover { border-color: var(--signal); }
+.btn:active { transform: translateY(1px); }
+.btn:focus-visible { outline: none; box-shadow: var(--focus-ring); }
+
+.btn--primary {
+  background: var(--signal-gradient);
+  border-color: transparent;
+  color: var(--signal-ink);
+  font-weight: 600;
+}
+.btn--primary:hover { filter: brightness(1.08); border-color: transparent; }
+
+.btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--ink-soft);
+}
+.btn--ghost:hover { color: var(--ink); border-color: var(--border-strong); }
+
+/* --- theme toggle switch --- */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--panel-raised);
+}
+.theme-toggle button {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+}
+.theme-toggle button[aria-pressed="true"] {
+  background: var(--signal);
+  color: var(--signal-ink);
+}

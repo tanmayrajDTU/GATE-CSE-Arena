@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Practice Engine — Design System</title>
+<script>
+  (function () {
+    var m = localStorage.getItem("pe-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", m);
+  })();
+</script>
+<link rel="stylesheet" href="assets/css/tokens.css">
+<style>
+  .wrap { max-width: 980px; margin: 0 auto; padding: 48px 24px 96px; }
+  header.top {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 56px;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .mark {
+    width: 34px; height: 34px; border-radius: 8px;
+    background: var(--panel-raised); border: 1px solid var(--border-strong);
+    display: flex; align-items: center; justify-content: center;
+    position: relative;
+  }
+  .brand .mark::after {
+    content: ""; width: 10px; height: 10px; border-radius: 50%;
+    background: var(--signal); box-shadow: 0 0 0 4px var(--signal-wash);
+  }
+  .brand .name { font-weight: 600; font-size: 1.05rem; }
+  .brand .sub { color: var(--ink-faint); font-size: 0.82rem; }
+
+  section { margin-bottom: 64px; }
+  h1 { font-size: 2.1rem; font-weight: 600; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 {
+    font-size: 0.85rem; font-weight: 600; color: var(--ink-faint);
+    margin: 0 0 20px; letter-spacing: 0.02em;
+  }
+  p.lede { color: var(--ink-soft); max-width: 62ch; margin: 0 0 8px; }
+
+  .swatch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .swatch { border-radius: var(--radius-m); overflow: hidden; border: 1px solid var(--border); }
+  .swatch .fill { height: 64px; }
+  .swatch .label { padding: 8px 10px; font-size: 0.76rem; background: var(--panel); }
+  .swatch .label b { display: block; font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-faint); font-weight: 400; }
+
+  .type-row { display: flex; align-items: baseline; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+  .type-row:last-child { border-bottom: none; }
+  .type-row .tag { width: 130px; flex-shrink: 0; color: var(--ink-faint); font-size: 0.78rem; font-family: var(--font-mono); }
+
+  .btn-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+  .gauge-row { display: flex; gap: 10px; flex-wrap: wrap; }
+
+  .card-demo { display: grid; grid-template-columns: 1fr 280px; gap: 20px; align-items: start; }
+  @media (max-width: 760px) { .card-demo { grid-template-columns: 1fr; } }
+
+  .q-card { padding: 28px; }
+  .q-meta { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+  .q-number { font-family: var(--font-mono); color: var(--ink-faint); font-size: 0.8rem; margin-bottom: 6px; }
+
+  .opt {
+    display: flex; gap: 12px; align-items: flex-start;
+    padding: 12px 14px; border-radius: var(--radius-m);
+    border: 1px solid var(--border); margin-bottom: 8px;
+    font-family: var(--font-read); cursor: pointer;
+  }
+  .opt .letter {
+    width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+    border: 1px solid var(--border-strong); display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-display); font-size: 0.72rem; color: var(--ink-faint);
+    margin-top: 1px;
+  }
+  .opt.is-correct { border-color: var(--correct); background: var(--correct-wash); }
+  .opt.is-correct .letter { border-color: var(--correct); color: var(--correct); }
+  .opt.is-incorrect { border-color: var(--incorrect); background: var(--incorrect-wash); }
+  .opt.is-incorrect .letter { border-color: var(--incorrect); color: var(--incorrect); }
+
+  .side-panel { padding: 20px; }
+  .stat-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--border); font-size: 0.86rem; }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-row .v { font-family: var(--font-mono); color: var(--ink); }
+  .timer {
+    font-family: var(--font-mono); font-size: 2rem; font-variant-numeric: tabular-nums;
+    text-align: center; padding: 18px 0; letter-spacing: 0.04em;
+  }
+  .timer .unit { font-size: 0.85rem; color: var(--ink-faint); }
+
+  .palette-note {
+    font-size: 0.86rem; color: var(--ink-soft); background: var(--panel);
+    border: 1px solid var(--border); border-radius: var(--radius-m);
+    padding: 14px 16px; margin-top: 10px;
+  }
+  .palette-note code { font-family: var(--font-mono); background: var(--panel-inset); padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body class="dot-grid">
+<div class="wrap">
+
+  <header class="top">
+    <div class="brand">
+      <div class="mark"></div>
+      <div>
+        <div class="name">Practice Engine</div>
+        <div class="sub">Design system — v1</div>
+      </div>
+    </div>
+    <div class="theme-toggle">
+      <button data-theme-btn="dark" aria-pressed="true">Dark</button>
+      <button data-theme-btn="light" aria-pressed="false">Light</button>
+    </div>
+  </header>
+
+  <section>
+    <h1>An instrument panel for exam drills</h1>
+    <p class="lede">
+      Dark by default, built around one working accent (signal teal) for
+      everything interactive, a separate reserved accent (dial gold) that
+      only ever marks streaks, points and achievements, and a fixed
+      correct/incorrect/marked palette for feedback that never doubles as
+      UI chrome. Long reading — questions, options, solutions — sets in a
+      serif; everything structural sets in a technical grotesk; every
+      number that measures something (timers, success rates, question
+      IDs) sets in monospace.
+    </p>
+  </section>
+
+  <section>
+    <h2>COLOR — SURFACES</h2>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="fill" style="background:var(--bg)"></div><div class="label">Background<b>--bg</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--panel)"></div><div class="label">Panel<b>--panel</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--panel-raised)"></div><div class="label">Panel raised<b>--panel-raised</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--panel-inset)"></div><div class="label">Panel inset<b>--panel-inset</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--border-strong)"></div><div class="label">Border strong<b>--border-strong</b></div></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>COLOR — ACCENTS &amp; FEEDBACK</h2>
+    <div class="swatch-grid">
+      <div class="swatch"><div class="fill" style="background:var(--signal)"></div><div class="label">Signal (interactive)<b>--signal</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--dial)"></div><div class="label">Dial gold (streaks/points only)<b>--dial</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--correct)"></div><div class="label">Correct<b>--correct</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--incorrect)"></div><div class="label">Incorrect<b>--incorrect</b></div></div>
+      <div class="swatch"><div class="fill" style="background:var(--marked)"></div><div class="label">Marked for review<b>--marked</b></div></div>
+    </div>
+    <div class="palette-note">
+      Rule: <code>--signal</code> is the only color a person can click on. <code>--dial</code> never appears on an interactive
+      element — only on streak counters, points totals and achievement badges. This keeps "you earned something" visually
+      distinct from "you can act on this."
+    </div>
+  </section>
+
+  <section>
+    <h2>TYPE</h2>
+    <div class="type-row"><div class="tag">display / UI</div><div style="font-family:var(--font-display); font-size:1.6rem; font-weight:600;">Space Grotesk — headings, nav, buttons, badges</div></div>
+    <div class="type-row"><div class="tag">reading</div><div class="reading" style="font-size:1.15rem;">Source Serif 4 — question text, options, solutions. Set for long sessions, not headlines.</div></div>
+    <div class="type-row"><div class="tag">data / mono</div><div class="mono-readout" style="font-size:1.3rem;">JetBrains Mono — 00:14:52 · Q#73401 · 70.3%</div></div>
+  </section>
+
+  <section>
+    <h2>BUTTONS &amp; GAUGES</h2>
+    <div class="btn-row" style="margin-bottom:24px;">
+      <button class="btn btn--primary">Start test</button>
+      <button class="btn">Bookmark</button>
+      <button class="btn btn--ghost">Skip</button>
+    </div>
+    <div class="gauge-row">
+      <span class="gauge gauge--easy">Easy</span>
+      <span class="gauge gauge--medium">Medium</span>
+      <span class="gauge gauge--hard">Hard</span>
+      <span class="gauge gauge--unknown">Unrated</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>SAMPLE QUESTION CARD</h2>
+    <div class="card-demo">
+      <div class="panel q-card">
+        <div class="q-meta">
+          <span class="gauge gauge--medium">Medium</span>
+          <span class="gauge" style="--gauge-color:var(--ink-faint)">MCQ</span>
+        </div>
+        <div class="q-number">Q#73401 · Digital Electronics · Combinational Circuit</div>
+        <div class="reading">
+          <p>In the following truth table, <strong>V = 1</strong> if and only if the input is valid. What function does the truth table represent?</p>
+        </div>
+        <div style="margin-top:18px;">
+          <div class="opt is-correct"><span class="letter">A</span><span>Priority encoder</span></div>
+          <div class="opt is-incorrect"><span class="letter">B</span><span>Decoder</span></div>
+          <div class="opt"><span class="letter">C</span><span>Multiplexer</span></div>
+          <div class="opt"><span class="letter">D</span><span>Demultiplexer</span></div>
+        </div>
+      </div>
+      <div class="panel side-panel">
+        <div class="timer">18:24<span class="unit"> / 30:00</span></div>
+        <div class="stat-row"><span>Answered</span><span class="v">42 / 65</span></div>
+        <div class="stat-row"><span>Marked</span><span class="v">3</span></div>
+        <div class="stat-row"><span>Success rate</span><span class="v">89.7%</span></div>
+        <div class="stat-row"><span>Streak</span><span class="v" style="color:var(--dial)">🔥 12 days</span></div>
+      </div>
+    </div>
+  </section>
+
+</div>
+<script src="assets/js/mode.js"></script>
+<script src="assets/js/theme.js"></script>
+</body>
+</html>

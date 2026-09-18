@@ -1,36 +1,43 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta name="theme-color" content="#10131A">
-<title>Subject — GATE CSE PYQ Console</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Subject — Practice Engine</title>
+<script>
+  (function () {
+    var m = localStorage.getItem("pe-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", m);
+  })();
+</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/tokens.css">
+<link rel="stylesheet" href="assets/css/site.css">
 </head>
-<body class="grid-bg">
+<body class="dot-grid">
 
-<div class="mobile-bar">
-  <a class="rail-brand" href="index.html"><span class="mark">GATE·CSE</span><span class="name">PYQ Console</span></a>
-  <button id="mobile-toggle" class="btn ghost small">Menu</button>
-</div>
+<a class="skip-link" href="#page-main">Skip to content</a>
+<div class="app-shell">
+  <nav class="rail" id="rail-mount" aria-label="Primary"></nav>
 
-<div class="shell">
-  <nav class="rail" id="rail-mount"></nav>
+  <div class="main-col">
+    <div class="topbar">
+      <button class="icon-btn" id="mobile-toggle" aria-label="Open menu" aria-expanded="false">☰</button>
+      <span style="font-weight:600; font-size:0.9rem;" id="topbar-label">Practice Engine</span>
+      <span style="width:36px;"></span>
+    </div>
 
-  <main class="main" id="page-main">
-    <div class="empty-state">Loading subject…</div>
-  </main>
+    <main class="page-main" id="page-main" tabindex="-1"></main>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="assets/js/config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<script src="assets/js/mode.js"></script>
+<script src="assets/js/theme.js"></script>
 <script src="assets/js/db.js"></script>
 <script src="assets/js/state.js"></script>
-<script src="assets/js/sync.js"></script>
+<script src="assets/js/supabase-sync.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/launcher.js"></script>
 <script src="assets/js/subject.js"></script>

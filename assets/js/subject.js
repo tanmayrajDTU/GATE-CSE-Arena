@@ -1,5 +1,6 @@
 (async function () {
   UI.initMobileBar();
+  await SYNC.ready();
   const slug = UI.qs("s");
   if (!slug) { location.href = "index.html"; return; }
 
@@ -7,26 +8,27 @@
 
   const [manifest, questions] = await Promise.all([DB.getManifest(), DB.getSubject(slug)]);
   const meta = manifest.subjects.find(s => s.slug === slug);
-  if (!meta) { document.getElementById("page-main").innerHTML = `<div class="empty-state">Subject not found.</div>`; return; }
-
-  const state = { type: "all", difficulty: "all", year: "all", topics: new Set() };
-
   const main = document.getElementById("page-main");
+  if (!meta) { main.innerHTML = `<div class="empty-state">Subject not found.</div>`; return; }
+
+  const state = { type: "all", difficulty: "all", year: "all", topics: new Set(), limit: null };
+  const hasYears = questions.some(q => q.year);
+
   main.innerHTML = `
     <div style="margin-bottom:22px;">
-      <div class="subtle mono" style="font-size:12px; margin-bottom:6px;">SUBJECT</div>
-      <h1 class="display-title" style="font-size:28px;">${UI.esc(meta.name)}</h1>
+      <div class="page-kicker">${MODE.get() === "pyq" ? "PYQ SUBJECT" : "SUBJECT"}</div>
+      <h1 class="page-title">${UI.esc(meta.name)}</h1>
     </div>
 
     <div class="stat-strip" style="margin-bottom:24px;">
-      <div class="stat-cell"><div class="stat-num mono">${meta.count}</div><div class="stat-label">Total questions</div></div>
-      <div class="stat-cell"><div class="stat-num mono">${meta.types.MCQ || 0}</div><div class="stat-label">MCQ</div></div>
-      <div class="stat-cell"><div class="stat-num mono">${meta.types.MSQ || 0}</div><div class="stat-label">MSQ</div></div>
-      <div class="stat-cell"><div class="stat-num mono">${meta.types.NAT || 0}</div><div class="stat-label">NAT</div></div>
-      <div class="stat-cell"><div class="stat-num mono">${meta.topics.length}</div><div class="stat-label">Topics</div></div>
+      <div class="stat-cell"><div class="stat-num">${meta.count}</div><div class="stat-label">Total questions</div></div>
+      <div class="stat-cell"><div class="stat-num">${meta.types.MCQ || 0}</div><div class="stat-label">MCQ</div></div>
+      <div class="stat-cell"><div class="stat-num">${meta.types.MSQ || 0}</div><div class="stat-label">MSQ</div></div>
+      <div class="stat-cell"><div class="stat-num">${meta.types.NAT || 0}</div><div class="stat-label">NAT</div></div>
+      <div class="stat-cell"><div class="stat-num">${meta.topics.length}</div><div class="stat-label">Topics</div></div>
     </div>
 
-    <div class="panel panel-pad" style="margin-bottom:22px; display:flex; gap:26px; flex-wrap:wrap;">
+    <div class="panel" style="padding:20px 22px; margin-bottom:22px; display:flex; gap:28px; flex-wrap:wrap;">
       <div>
         <label class="field-label">Type</label>
         <div class="chip-row" id="type-chips">
@@ -39,21 +41,26 @@
           ${["all", "easy", "medium", "hard", "unknown"].map(d => `<label class="chip ${d === 'all' ? 'active' : ''}" data-val="${d}">${d === "all" ? "All" : UI.difficultyLabel(d)}</label>`).join("")}
         </div>
       </div>
+      ${hasYears ? `
       <div>
         <label class="field-label">Year</label>
         <select id="year-select"></select>
+      </div>` : ""}
+      <div>
+        <label class="field-label">Number of questions</label>
+        <input type="number" id="topic-limit-input" placeholder="All selected" min="1" style="width:140px;">
       </div>
     </div>
 
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; flex-wrap:wrap; gap:10px;">
       <div>
-        <button class="btn ghost small" id="select-all-btn">Select all topics</button>
-        <button class="btn ghost small" id="clear-sel-btn">Clear</button>
+        <button class="btn btn--ghost" id="select-all-btn">Select all topics</button>
+        <button class="btn btn--ghost" id="clear-sel-btn">Clear</button>
       </div>
-      <div style="display:flex; gap:10px;">
-        <span class="subtle" id="match-count" style="align-self:center; font-size:13px;"></span>
-        <button class="btn accent" id="start-selected-btn">Start selected topics</button>
-        <button class="btn ghost" id="start-all-btn">Start full subject</button>
+      <div style="display:flex; gap:10px; align-items:center;">
+        <span style="font-size:13px; color:var(--ink-faint);" id="match-count"></span>
+        <button class="btn btn--primary" id="start-selected-btn">Start selected topics</button>
+        <button class="btn" id="start-all-btn">Start full subject</button>
       </div>
     </div>
 
@@ -67,16 +74,18 @@
     </div>
   `;
 
-  // year options
-  const years = [...new Set(questions.map(q => q.year).filter(Boolean))].sort((a, b) => b - a);
-  const yearSel = document.getElementById("year-select");
-  yearSel.innerHTML = `<option value="all">All years</option>` + years.map(y => `<option value="${y}">${y}</option>`).join("");
+  if (hasYears) {
+    const years = [...new Set(questions.map(q => q.year).filter(Boolean))].sort((a, b) => b - a);
+    const yearSel = document.getElementById("year-select");
+    yearSel.innerHTML = `<option value="all">All years</option>` + years.map(y => `<option value="${y}">${y}</option>`).join("");
+    yearSel.addEventListener("change", () => { state.year = yearSel.value; renderTable(); });
+  }
 
   function filteredQuestions() {
     return questions.filter(q => {
       if (state.type !== "all" && q.type !== state.type) return false;
-      if (state.difficulty !== "all" && UI.difficultyOf(q.avgSuccessRate) !== state.difficulty) return false;
-      if (state.year !== "all" && String(q.year) !== state.year) return false;
+      if (state.difficulty !== "all" && q.difficulty !== state.difficulty) return false;
+      if (hasYears && state.year !== "all" && String(q.year) !== state.year) return false;
       return true;
     });
   }
@@ -98,19 +107,19 @@
       tbody.innerHTML = rows.map(([topic, qs]) => {
         const subtopics = [...new Set(qs.map(q => q.subtopic).filter(Boolean))];
         const diffCounts = { easy: 0, medium: 0, hard: 0, unknown: 0 };
-        qs.forEach(q => diffCounts[UI.difficultyOf(q.avgSuccessRate)]++);
+        qs.forEach(q => diffCounts[q.difficulty]++);
         const checked = state.topics.has(topic) ? "checked" : "";
         return `
         <tr data-topic="${UI.esc(topic)}">
           <td class="row-check"><input type="checkbox" class="topic-check" data-topic="${UI.esc(topic)}" ${checked}></td>
           <td>${UI.esc(topic)}</td>
-          <td class="subtle" style="font-size:12.5px; max-width:280px;">${subtopics.slice(0, 3).map(UI.esc).join(" · ")}${subtopics.length > 3 ? " …" : ""}</td>
-          <td class="mono">${qs.length}</td>
-          <td>
-            ${diffCounts.easy ? `<span class="tag good" style="margin-right:4px;">${diffCounts.easy} easy</span>` : ""}
-            ${diffCounts.medium ? `<span class="tag medium" style="margin-right:4px;">${diffCounts.medium} med</span>` : ""}
-            ${diffCounts.hard ? `<span class="tag hard" style="margin-right:4px;">${diffCounts.hard} hard</span>` : ""}
-            ${diffCounts.unknown ? `<span class="tag unknown">${diffCounts.unknown} unrated</span>` : ""}
+          <td style="font-size:12.5px; color:var(--ink-faint); max-width:280px;">${subtopics.slice(0, 3).map(UI.esc).join(" · ")}${subtopics.length > 3 ? " …" : ""}</td>
+          <td>${qs.length}</td>
+          <td class="diff-mix">
+            ${diffCounts.easy ? `<span class="gauge gauge--easy">${diffCounts.easy}</span>` : ""}
+            ${diffCounts.medium ? `<span class="gauge gauge--medium">${diffCounts.medium}</span>` : ""}
+            ${diffCounts.hard ? `<span class="gauge gauge--hard">${diffCounts.hard}</span>` : ""}
+            ${diffCounts.unknown ? `<span class="gauge gauge--unknown">${diffCounts.unknown}</span>` : ""}
           </td>
         </tr>`;
       }).join("");
@@ -128,10 +137,30 @@
   function updateMatchCount() {
     const pool = filteredQuestions();
     const selectedPool = state.topics.size ? pool.filter(q => state.topics.has(q.topic || "Uncategorized")) : [];
-    document.getElementById("match-count").textContent = state.topics.size
-      ? `${selectedPool.length} selected`
-      : `${pool.length} total in view`;
+    if (!state.topics.size) {
+      document.getElementById("match-count").textContent = `${pool.length} total in view`;
+    } else if (state.limit && state.limit < selectedPool.length) {
+      document.getElementById("match-count").textContent = `${selectedPool.length} selected · ${state.limit} will be used`;
+    } else {
+      document.getElementById("match-count").textContent = `${selectedPool.length} selected`;
+    }
   }
+
+  function pickLimited(pool, limit) {
+    if (!limit || limit >= pool.length) return pool;
+    const source = pool.slice();
+    const picked = [];
+    while (picked.length < limit && source.length) {
+      const i = Math.floor(Math.random() * source.length);
+      picked.push(source.splice(i, 1)[0]);
+    }
+    return picked;
+  }
+
+  document.getElementById("topic-limit-input").addEventListener("input", e => {
+    state.limit = e.target.value ? Number(e.target.value) : null;
+    updateMatchCount();
+  });
 
   document.querySelectorAll("#type-chips .chip").forEach(chip => {
     chip.addEventListener("click", () => {
@@ -149,7 +178,6 @@
       renderTable();
     });
   });
-  yearSel.addEventListener("change", () => { state.year = yearSel.value; renderTable(); });
 
   document.getElementById("select-all-btn").addEventListener("click", () => {
     filteredQuestions().forEach(q => state.topics.add(q.topic || "Uncategorized"));
@@ -161,10 +189,12 @@
   });
 
   document.getElementById("start-selected-btn").addEventListener("click", () => {
-    const pool = filteredQuestions().filter(q => state.topics.has(q.topic || "Uncategorized"));
     if (!state.topics.size) { UI.toast("Select at least one topic first."); return; }
+    let pool = filteredQuestions().filter(q => state.topics.has(q.topic || "Uncategorized"));
+    if (state.limit && state.limit < pool.length) pool = pickLimited(pool, state.limit);
     const refs = pool.map(q => ({ s: slug, id: q.id }));
-    LAUNCHER.open(refs, `${meta.name} — ${state.topics.size} topic${state.topics.size === 1 ? "" : "s"}`);
+    const countLabel = `${state.topics.size} topic${state.topics.size === 1 ? "" : "s"}`;
+    LAUNCHER.open(refs, `${meta.name} — ${countLabel} — ${refs.length} question${refs.length === 1 ? "" : "s"}`);
   });
   document.getElementById("start-all-btn").addEventListener("click", () => {
     const pool = filteredQuestions();

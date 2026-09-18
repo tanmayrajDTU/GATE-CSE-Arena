@@ -58,25 +58,65 @@ const UI = (() => {
     return { easy: "Easy", medium: "Medium", hard: "Hard", unknown: "Unrated" }[d] || "Unrated";
   }
 
-  const SUBJECT_ICON_LETTER = slug => (slug || "?").replace(/[^a-z]/gi, "")[0]?.toUpperCase() || "?";
+  // PYQ questions carry exam + year (e.g. "GATE 1996"); practice questions
+  // carry neither. Returns null when there's nothing worth showing.
+  function examYear(q) {
+    if (q.exam && q.year) return `${q.exam} ${q.year}`;
+    if (q.year) return String(q.year);
+    if (q.exam) return q.exam;
+    return null;
+  }
+
+  // Days remaining until GATE CSE 2027 (6 Feb 2027). Counts local calendar
+  // days, not raw hours, so it reads e.g. "132" all day rather than
+  // flipping mid-afternoon. Returns 0 on/after exam day.
+  function daysToGate() {
+    const examDay = new Date(2027, 1, 6); // months are 0-indexed: 1 = Feb
+    examDay.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const diff = Math.round((examDay - today) / 86400000);
+    return Math.max(0, diff);
+  }
 
   async function renderRail(activeSlug) {
     const mount = document.getElementById("rail-mount");
     if (!mount) return;
-    if (window.SYNC) await SYNC.init();
     const manifest = await DB.getManifest();
     const bmCount = STATE.bookmarkCount();
+    const points = STATE.getPoints();
+    const streak = STATE.getStreak();
+    const path = location.pathname;
+    const curMode = MODE.get();
     let html = `
       <a class="rail-brand" href="index.html">
-        <span class="mark">GATE·CSE</span>
-        <span class="name">PYQ Console</span>
+        <span class="mark"><span>P</span></span>
+        <span class="name">Practice Engine<small>GATE CSE</small></span>
       </a>
-      <a class="rail-link ${!activeSlug && location.pathname.endsWith('index.html') || location.pathname === '/' ? 'active' : ''}" href="index.html">Overview</a>
+      <div class="theme-toggle" id="mode-toggle" style="width:100%; justify-content:center; margin-bottom:14px;">
+        <button data-mode-btn="practice" aria-pressed="${curMode === 'practice'}">Practice</button>
+        <button data-mode-btn="pyq" aria-pressed="${curMode === 'pyq'}">PYQ</button>
+      </div>
+      <div class="rail-dial-strip">
+        <div class="rail-dial"><span class="v">${points.toLocaleString()}</span><span class="l">points</span></div>
+        <div class="rail-dial"><span class="v">${streak.current > 0 ? "🔥 " + streak.current : "0"}</span><span class="l">day streak</span></div>
+      </div>
+      <div class="rail-countdown">
+        <span class="num">${daysToGate()}</span>
+        <span class="lbl">${daysToGate() === 1 ? "day" : "days"} to GATE 2027</span>
+        <span class="sub">6 Feb 2027</span>
+      </div>
+      <a class="rail-link ${!activeSlug && (path.endsWith('index.html') || path === '/' || path.endsWith('/site/')) ? 'active' : ''}" href="index.html">Overview</a>
       <a class="rail-link ${activeSlug === '__custom' ? 'active' : ''}" href="builder.html">Build a test</a>
       <a class="rail-link ${activeSlug === '__bookmarks' ? 'active' : ''}" href="builder.html?bookmarks=1">
         <span>Bookmarked</span><span class="count">${bmCount}</span>
       </a>
       <a class="rail-link ${activeSlug === '__history' ? 'active' : ''}" href="history.html">History</a>
+      <a class="rail-link ${activeSlug === '__achievements' ? 'active' : ''}" href="achievements.html">Achievements</a>
+      <a class="rail-link ${activeSlug === '__settings' ? 'active' : ''}" href="settings.html">
+        <span>Sync</span>
+        <span class="sync-dot ${window.SYNC && SYNC.isLinked() ? 'is-linked' : ''}" aria-hidden="true"></span>
+      </a>
       <div class="rail-section-label">SUBJECTS</div>
     `;
     manifest.subjects.forEach(s => {
@@ -84,16 +124,45 @@ const UI = (() => {
         <span>${esc(s.name)}</span><span class="count">${s.count}</span>
       </a>`;
     });
-    html += `<div class="rail-account" id="account-widget"></div>`;
+    html += `<div class="rail-foot"><div class="theme-toggle" style="width:100%; justify-content:center;">
+      <button data-theme-btn="dark" aria-pressed="true">Dark</button>
+      <button data-theme-btn="light" aria-pressed="false">Light</button>
+    </div></div>`;
     mount.innerHTML = html;
-    if (window.SYNC) SYNC.renderAccountWidget("account-widget");
+    const topbarLabel = document.getElementById("topbar-label");
+    if (topbarLabel) topbarLabel.textContent = "Practice Engine — " + MODE.label();
+    if (window.Theme) Theme.init();
+    mount.querySelectorAll("[data-mode-btn]").forEach(btn => {
+      btn.addEventListener("click", () => {
+        const target = btn.dataset.modeBtn;
+        if (target === MODE.get()) return;
+        MODE.set(target);
+        location.href = "index.html";
+      });
+    });
   }
 
   function initMobileBar() {
     const btn = document.getElementById("mobile-toggle");
     const rail = document.querySelector(".rail");
     if (btn && rail) {
-      btn.addEventListener("click", () => rail.classList.toggle("open"));
+      btn.addEventListener("click", () => {
+        const open = rail.classList.toggle("open");
+        btn.setAttribute("aria-expanded", String(open));
+      });
+      document.addEventListener("click", e => {
+        if (rail.classList.contains("open") && !rail.contains(e.target) && e.target !== btn) {
+          rail.classList.remove("open");
+          btn.setAttribute("aria-expanded", "false");
+        }
+      });
+      document.addEventListener("keydown", e => {
+        if (e.key === "Escape" && rail.classList.contains("open")) {
+          rail.classList.remove("open");
+          btn.setAttribute("aria-expanded", "false");
+          btn.focus();
+        }
+      });
     }
   }
 
@@ -101,5 +170,5 @@ const UI = (() => {
     return new URLSearchParams(location.search).get(name);
   }
 
-  return { esc, renderMath, toast, fmtTime, difficultyOf, difficultyLabel, renderRail, initMobileBar, qs };
+  return { esc, renderMath, toast, fmtTime, difficultyOf, difficultyLabel, examYear, daysToGate, renderRail, initMobileBar, qs };
 })();

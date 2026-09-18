@@ -1,8 +1,8 @@
 /* ============================================================
-   LAUNCHER — small confirmation overlay used right before starting
-   any test (from subject page, builder, or bookmarks). Lets the
-   person pick timed/untimed + duration + question order, then
-   writes the draft and navigates to test.html.
+   LAUNCHER — confirmation overlay shown right before starting any
+   test (from subject page, builder, or bookmarks). Picks timed/
+   untimed + duration + question order, writes the draft, navigates
+   to test.html.
    ============================================================ */
 
 const LAUNCHER = (() => {
@@ -22,11 +22,11 @@ const LAUNCHER = (() => {
     if (overlay) overlay.remove();
     overlay = document.createElement("div");
     overlay.id = "launch-overlay";
-    overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,.6); display:flex; align-items:center; justify-content:center; z-index:100; padding:20px;";
+    overlay.className = "overlay";
     overlay.innerHTML = `
-      <div class="panel panel-pad" style="max-width:420px; width:100%; background:var(--paper-raised);">
-        <h3 style="font-size:17px; margin-bottom:4px;">${UI.esc(title)}</h3>
-        <p class="subtle" style="font-size:13px; margin-bottom:18px;">${refs.length} question${refs.length === 1 ? "" : "s"} in this set.</p>
+      <div class="panel overlay-card">
+        <h3>${UI.esc(title)}</h3>
+        <p class="lede">${refs.length} question${refs.length === 1 ? "" : "s"} in this set.</p>
 
         <div style="margin-bottom:16px;">
           <label class="field-label">Mode</label>
@@ -49,9 +49,9 @@ const LAUNCHER = (() => {
           </div>
         </div>
 
-        <div style="display:flex; gap:10px; justify-content:flex-end;">
-          <button class="btn ghost" id="launch-cancel">Cancel</button>
-          <button class="btn accent" id="launch-start">Start</button>
+        <div class="overlay-actions">
+          <button class="btn btn--ghost" id="launch-cancel">Cancel</button>
+          <button class="btn btn--primary" id="launch-start">Start</button>
         </div>
       </div>
     `;
@@ -59,7 +59,7 @@ const LAUNCHER = (() => {
 
     overlay.querySelectorAll(".chip").forEach(chip => {
       chip.addEventListener("click", () => {
-        const group = chip.dataset.mode ? '[data-mode]' : '[data-order]';
+        const group = chip.dataset.mode ? "[data-mode]" : "[data-order]";
         overlay.querySelectorAll(group).forEach(c => c.classList.remove("active"));
         chip.classList.add("active");
         chip.querySelector("input").checked = true;
@@ -73,8 +73,8 @@ const LAUNCHER = (() => {
     overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
 
     overlay.querySelector("#launch-start").addEventListener("click", () => {
-      const mode = overlay.querySelector('input[name=mode]:checked').value;
-      const order = overlay.querySelector('input[name=order]:checked').value;
+      const mode = overlay.querySelector("input[name=mode]:checked").value;
+      const order = overlay.querySelector("input[name=order]:checked").value;
       const minutes = Number(document.getElementById("minutes-input").value) || 30;
       const finalRefs = order === "shuffled" ? shuffle(refs) : refs;
 

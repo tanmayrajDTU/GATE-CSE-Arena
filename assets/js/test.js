@@ -1,6 +1,5 @@
 (async function () {
-  if (window.SYNC) await SYNC.init();
-
+  await SYNC.ready();
   const draft = STATE.getDraft();
   const shell = document.getElementById("exam-shell");
   if (!draft || !draft.refs || !draft.refs.length) {
@@ -9,7 +8,6 @@
   }
 
   const questions = await DB.resolveRefs(draft.refs);
-  // subject slug aligned by ref order; build id -> slug map (refs order == questions order from resolveRefs)
   const slugById = {};
   draft.refs.forEach(r => { slugById[r.id] = r.s; });
 
@@ -17,7 +15,6 @@
   let submitting = false;
 
   function letter(i) { return String.fromCharCode(65 + i); }
-
   function answerFor(q) { return draft.answers[q.id]; }
   function isAnswered(q) {
     const a = answerFor(q);
@@ -36,7 +33,6 @@
     if (visited) return "not-answered";
     return "not-visited";
   }
-
   function persist() { STATE.saveDraft(draft); }
 
   function buildShell() {
@@ -44,19 +40,20 @@
       <div class="exam-topbar">
         <div class="exam-title">${UI.esc(draft.title)}<span class="sub">${questions.length} questions</span></div>
         <div style="display:flex; align-items:center; gap:14px;">
-          ${draft.timed ? `<div class="timer mono" id="timer-display">--:--</div>` : `<span class="tag">Untimed</span>`}
-          <button class="btn accent" id="submit-btn">Submit test</button>
+          ${draft.timed ? `<div class="exam-timer" id="timer-display" data-time="--:--" aria-hidden="true"></div>` : `<span class="tag">Untimed</span>`}
+          <button class="btn btn--primary" id="submit-btn">Submit test</button>
         </div>
       </div>
-      <div class="exam-main" id="exam-main"></div>
+      <div class="visually-hidden" id="timer-live" role="status" aria-live="polite"></div>
+      <div class="panel exam-main" id="exam-main"></div>
       <div class="exam-side">
-        <div class="side-legend">
-          <div class="legend-item"><span class="legend-swatch" style="background:var(--good);"></span>Answered</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:var(--bad-wash); border:1px solid var(--bad);"></span>Not answered</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:var(--paper-raised); border:1px solid var(--line-strong);"></span>Not visited</div>
-          <div class="legend-item"><span class="legend-swatch" style="background:var(--review);"></span>Marked for review</div>
+        <div class="panel side-legend" aria-hidden="true">
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--correct);"></span>Answered</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--incorrect-wash); border:1px solid var(--incorrect);"></span>Not answered</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--panel-raised); border:1px solid var(--border-strong);"></span>Not visited</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:var(--marked);"></span>Marked for review</div>
         </div>
-        <div class="palette-grid" id="palette-grid"></div>
+        <div class="panel palette-grid" id="palette-grid" role="group" aria-label="Question palette"></div>
       </div>
     `;
     document.getElementById("submit-btn").addEventListener("click", confirmSubmit);
@@ -72,21 +69,23 @@
     if (q.type === "NAT") {
       const val = answerFor(q) ?? "";
       bodyHtml = `
-        <div class="q-body q-text">${q.text}</div>
-        <input type="text" inputmode="decimal" class="nat-input mono" id="nat-input" placeholder="Enter numeric answer" value="${UI.esc(val)}">
+        <div class="q-body reading">${q.text}</div>
+        <input type="text" inputmode="decimal" class="nat-input mono-readout" id="nat-input" placeholder="Enter numeric answer" value="${UI.esc(val)}">
       `;
     } else {
       const isMsq = q.type === "MSQ";
       const selected = answerFor(q);
       const selectedSet = new Set(isMsq ? (selected || []) : (selected !== undefined && selected !== null ? [selected] : []));
+      const inputType = isMsq ? "checkbox" : "radio";
       bodyHtml = `
-        <div class="q-body q-text">${q.text}</div>
-        <div class="opt-list ${isMsq ? 'msq' : 'mcq'}" id="opt-list">
+        <div class="q-body reading">${q.text}</div>
+        <div class="opt-list ${isMsq ? 'msq' : 'mcq'}" id="opt-list" role="${isMsq ? 'group' : 'radiogroup'}" aria-label="Answer options">
           ${q.options.map((opt, i) => `
-            <div class="opt-row ${selectedSet.has(opt.id) ? 'selected' : ''}" data-opt="${opt.id}">
-              <div class="opt-mark">${selectedSet.has(opt.id) ? '✓' : letter(i)}</div>
-              <div class="opt-body q-body">${opt.html}</div>
-            </div>
+            <label class="opt-row ${selectedSet.has(opt.id) ? 'selected' : ''}" data-opt="${opt.id}">
+              <input type="${inputType}" name="opt-input" class="visually-hidden opt-input" value="${opt.id}" ${selectedSet.has(opt.id) ? 'checked' : ''}>
+              <span class="opt-mark" aria-hidden="true">${selectedSet.has(opt.id) ? '✓' : letter(i)}</span>
+              <span class="opt-body reading">${opt.html}</span>
+            </label>
           `).join("")}
         </div>
       `;
@@ -97,20 +96,20 @@
         <div class="q-meta">
           <span class="q-number">Q ${idx + 1} / ${questions.length}</span>
           <span class="tag">${q.type}</span>
-          <span class="tag">${UI.esc(q.subject)}</span>
-          ${q.topic ? `<span class="tag">${UI.esc(q.topic)}</span>` : ""}
-          ${q.year ? `<span class="tag mono">${q.year}</span>` : ""}
+          <span class="gauge gauge--${q.difficulty}">${UI.difficultyLabel(q.difficulty)}</span>
+          <span class="tag">${UI.esc(q.topic)}</span>
+          ${UI.examYear(q) ? `<span class="tag mono">${UI.esc(UI.examYear(q))}</span>` : ""}
         </div>
-        <button class="bookmark-btn ${bookmarked ? 'active' : ''}" id="bookmark-btn" title="Bookmark for later">★</button>
+        <button class="bookmark-btn ${bookmarked ? 'active' : ''}" id="bookmark-btn" title="Bookmark for later" aria-pressed="${bookmarked}" aria-label="Bookmark this question">★</button>
       </div>
       <div id="q-content">${bodyHtml}</div>
       <div class="exam-actions">
-        <div style="display:flex; gap:10px;">
-          <button class="btn ghost" id="prev-btn" ${idx === 0 ? "disabled" : ""}>Previous</button>
-          <button class="flag-btn ${flagged ? 'active' : ''}" id="flag-btn">${flagged ? "✓ Marked for review" : "Mark for review"}</button>
-          <button class="btn ghost" id="clear-btn">Clear response</button>
+        <div style="display:flex; gap:10px; flex-wrap:wrap;">
+          <button class="btn btn--ghost" id="prev-btn" ${idx === 0 ? "disabled" : ""}>Previous</button>
+          <button class="flag-btn ${flagged ? 'active' : ''}" id="flag-btn" aria-pressed="${flagged}">${flagged ? "✓ Marked for review" : "Mark for review"}</button>
+          <button class="btn btn--ghost" id="clear-btn">Clear response</button>
         </div>
-        <button class="btn accent" id="next-btn">${idx === questions.length - 1 ? "Finish" : "Save & Next"}</button>
+        <button class="btn btn--primary" id="next-btn">${idx === questions.length - 1 ? "Finish" : "Save & Next"}</button>
       </div>
     `;
 
@@ -118,7 +117,9 @@
 
     document.getElementById("bookmark-btn").addEventListener("click", () => {
       const active = STATE.toggleBookmark(slugById[q.id], q.id);
-      document.getElementById("bookmark-btn").classList.toggle("active", active);
+      const btn = document.getElementById("bookmark-btn");
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", String(active));
       UI.toast(active ? "Bookmarked" : "Bookmark removed");
     });
 
@@ -130,19 +131,24 @@
         renderPalette();
       });
     } else {
-      document.querySelectorAll("#opt-list .opt-row").forEach(row => {
-        row.addEventListener("click", () => {
-          const optId = Number(row.dataset.opt);
+      document.querySelectorAll("#opt-list .opt-input").forEach((input, i) => {
+        input.addEventListener("change", () => {
+          const optId = Number(input.value);
           if (q.type === "MSQ") {
             const cur = new Set(draft.answers[q.id] || []);
-            if (cur.has(optId)) cur.delete(optId); else cur.add(optId);
+            if (input.checked) cur.add(optId); else cur.delete(optId);
             draft.answers[q.id] = [...cur];
           } else {
             draft.answers[q.id] = optId;
           }
           draft.visited[q.id] = true;
           persist();
-          renderMain();
+          // update visuals in place (no full re-render) so keyboard focus stays put
+          document.querySelectorAll("#opt-list .opt-row").forEach((row, ri) => {
+            const checked = row.querySelector(".opt-input").checked;
+            row.classList.toggle("selected", checked);
+            row.querySelector(".opt-mark").textContent = checked ? "✓" : letter(ri);
+          });
           renderPalette();
         });
       });
@@ -180,12 +186,18 @@
     window.scrollTo({ top: 0, behavior: "instant" in window ? "instant" : "auto" });
   }
 
+  const STATUS_LABEL = {
+    "answered": "answered", "not-answered": "not answered",
+    "not-visited": "not visited", "review": "marked for review",
+    "answered-review": "answered, marked for review",
+  };
   function renderPalette() {
     const grid = document.getElementById("palette-grid");
     grid.innerHTML = questions.map((q, i) => {
       const st = statusFor(q);
-      const cur = i === draft.currentIndex ? "current" : "";
-      return `<div class="palette-cell ${st} ${cur}" data-i="${i}">${i + 1}</div>`;
+      const cur = i === draft.currentIndex;
+      return `<button type="button" class="palette-cell ${st} ${cur ? 'current' : ''}" data-i="${i}"
+        aria-label="Question ${i + 1}, ${STATUS_LABEL[st]}" ${cur ? 'aria-current="true"' : ''}>${i + 1}</button>`;
     }).join("");
     grid.querySelectorAll(".palette-cell").forEach(cell => {
       cell.addEventListener("click", () => goTo(Number(cell.dataset.i)));
@@ -211,8 +223,18 @@
   function updateTimerDisplay() {
     const el = document.getElementById("timer-display");
     if (!el) return;
-    el.textContent = UI.fmtTime(draft.remainingSeconds);
+    el.dataset.time = UI.fmtTime(draft.remainingSeconds);
     el.classList.toggle("low", draft.remainingSeconds <= 60);
+    const fraction = draft.totalSeconds ? Math.max(0, draft.remainingSeconds / draft.totalSeconds) : 0;
+    el.style.setProperty("--tpct", (fraction * 360).toFixed(1) + "deg");
+
+    // Sparing live-region updates so screen readers aren't spammed every second:
+    // announce each full minute, then every 10s in the final minute.
+    const live = document.getElementById("timer-live");
+    if (!live) return;
+    const s = draft.remainingSeconds;
+    const shouldAnnounce = (s <= 60 && s % 10 === 0) || (s > 60 && s % 60 === 0);
+    if (shouldAnnounce) live.textContent = `${UI.fmtTime(s)} remaining`;
   }
 
   function confirmSubmit() {
@@ -228,7 +250,7 @@
     submitting = true;
     if (timerHandle) clearInterval(timerHandle);
 
-    let correct = 0, wrong = 0, skipped = 0;
+    let correct = 0, wrong = 0, skipped = 0, pointsEarned = 0;
     const items = questions.map(q => {
       const a = answerFor(q);
       const answered = isAnswered(q);
@@ -246,14 +268,22 @@
       }
       if (!answered) skipped++; else if (isCorrect) correct++; else wrong++;
 
-      STATE.recordOutcome(slugById[q.id], q.id, answered ? (isCorrect ? "correct" : "incorrect") : "skipped");
+      pointsEarned += STATE.recordOutcome(
+        slugById[q.id], q.id,
+        answered ? (isCorrect ? "correct" : "incorrect") : "skipped",
+        { type: q.type, difficulty: q.difficulty }
+      );
 
       return {
         id: q.id, subject: slugById[q.id], subjectName: q.subject, type: q.type,
+        topic: q.topic, difficulty: q.difficulty,
         selected: a ?? null, correctAnswer: q.correctAnswer, isCorrect, answered,
         flagged: !!draft.flags[q.id],
       };
     });
+
+    const streak = STATE.touchStreak();
+    const newAchievements = ACHIEVEMENTS.evaluateAndUnlock().map(a => ({ id: a.id, name: a.name, desc: a.desc, icon: a.icon }));
 
     const timeTakenSeconds = draft.timed
       ? draft.totalSeconds - draft.remainingSeconds
@@ -269,6 +299,9 @@
       autoSubmitted: auto,
       total: questions.length,
       correct, wrong, skipped,
+      pointsEarned,
+      streakAfter: streak.current,
+      newAchievements,
       items,
     };
     STATE.saveResult(result);
@@ -281,5 +314,5 @@
   renderPalette();
   startTimer();
 
-  window.addEventListener("beforeunload", () => { if (!submitting) persist(); });
+  window.addEventListener("beforeunload", persist);
 })();

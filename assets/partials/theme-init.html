@@ -1,0 +1,8 @@
+<!-- Paste this as the FIRST thing inside <head>, before any CSS link.
+     Keeps the "pe-theme" key in sync with assets/js/theme.js. -->
+<script>
+  (function () {
+    var m = localStorage.getItem("pe-theme") || "dark";
+    document.documentElement.setAttribute("data-theme", m);
+  })();
+</script>
